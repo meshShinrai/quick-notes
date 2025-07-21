@@ -1,54 +1,27 @@
 package main
 
 import (
-	"database/sql"
-	"log"
-	"net/http"
-	"os"
-
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
+	"log"
 
-	"github.com/meshShinrai/quick-notes/internal/db"
+	"github.com/meshShinrai/quick-notes/db"
+	"github.com/meshShinrai/quick-notes/handlers"
 )
 
-var database *sql.DB
-
-func init() {
-	// Load environment variables from .env if present
-	err := godotenv.Load()
-	if err != nil {
-		log.Println("No .env file found or failed to load. Using environment variables.")
-	}
-}
-
 func main() {
-	secretName := os.Getenv("SECRET_NAME")
-	if secretName == "" {
-		log.Fatal("SECRET_NAME not set in environment")
-	}
-
-	// Connect to the DB
-	var err error
-	database, err = db.Connect(secretName)
+	database, err := db.Connect()
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		log.Fatalf("Failed to connect to DB: %v", err)
 	}
-	defer database.Close()
+	db.Migrate(database)
 
-	// Create Gin router
 	router := gin.Default()
+	noteHandler := handlers.NewNoteHandler(database)
 
-	// Health check route
-	router.GET("/ping", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"message": "pong"})
-	})
+	router.GET("/notes", noteHandler.GetAllNotes)
+	router.POST("/notes", noteHandler.CreateNote)
+	router.PUT("/notes/:id", noteHandler.UpdateNote)
+	router.DELETE("/notes/:id", noteHandler.DeleteNote)
 
-	// Placeholder for future notes routes
-	// e.g., router.GET("/notes", handlers.GetNotes)
-
-	log.Println("Server running on :8080")
-	if err := router.Run(":8080"); err != nil {
-		log.Fatalf("Failed to run server: %v", err)
-	}
+	router.Run(":8080")
 }

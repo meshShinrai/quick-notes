@@ -8,57 +8,82 @@ import (
 	"github.com/meshShinrai/quick-notes/internal/models"
 )
 
-func GetNotes(db *sql.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		rows, err := db.Query("SELECT id, content FROM notes ORDER BY id DESC")
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch notes"})
-			return
-		}
-		defer rows.Close()
-
-		var notes []models.Note
-		for rows.Next() {
-			var note models.Note
-			if err := rows.Scan(&note.ID, &note.Content); err != nil {
-				continue
-			}
-			notes = append(notes, note)
-		}
-
-		c.JSON(http.StatusOK, notes)
-	}
+type NoteHandler struct {
+	DB *sql.DB
 }
 
-func CreateNote(db *sql.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
+func NewNoteHandler(db *sql.DB) *NoteHandler {
+	return &NoteHandler{DB: db}
+}
+
+// GET /notes
+func (h *NoteHandler) GetAllNotes(c *gin.Context) {
+	rows, err := h.DB.Query("SELECT id, content, created_at, updated_at FROM notes")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch notes"})
+		return
+	}
+	defer rows.Close()
+
+	var notes []models.Note
+	for rows.Next() {
 		var note models.Note
-		if err := c.BindJSON(&note); err != nil || note.Content == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid note content"})
+		if err := rows.Scan(&note.ID, &note.Content, &note.CreatedAt, &note.UpdatedAt); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to scan note"})
 			return
 		}
-
-		res, err := db.Exec("INSERT INTO notes (content) VALUES (?)", note.Content)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to insert note"})
-			return
-		}
-
-		id, _ := res.LastInsertId()
-		note.ID = int(id)
-		c.JSON(http.StatusCreated, note)
+		notes = append(notes, note)
 	}
+
+	c.JSON(http.StatusOK, notes)
 }
 
-func DeleteNote(db *sql.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		id := c.Param("id")
-		_, err := db.Exec("DELETE FROM notes WHERE id = ?", id)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete note"})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"message": "Note deleted"})
+// POST /notes
+func (h *NoteHandler) CreateNote(c *gin.Context) {
+	var input struct {
+		Content string `json:"content" binding:"required"`
 	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Content is required"})
+		return
+	}
+
+	query := "INSERT INTO notes (content) VALUES (?)"
+	result, err := h.DB.Exec(query, input.Content)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to insert note"})
+		return
+	}
+
+	id, _ := result.LastInsertId()
+	c.JSON(http.StatusCreated, gin.H{"message": "Note created", "id": id})
+}
+
+// DELETE /notes/:id
+func (h *NoteHandler) DeleteNote(c *gin.Context) {
+	id := c.Param("id")
+	if _, err := h.DB.Exec("DELETE FROM notes WHERE id = ?", id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete note"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Note deleted"})
+}
+
+// PUT /notes/:id
+func (h *NoteHandler) UpdateNote(c *gin.Context) {
+	id := c.Param("id")
+
+	var input struct {
+		Content string `json:"content" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Content is required"})
+		return
+	}
+
+	if _, err := h.DB.Exec("UPDATE notes SET content = ? WHERE id = ?", input.Content, id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update note"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Note updated"})
 }
