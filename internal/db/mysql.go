@@ -26,7 +26,7 @@ func Connect() (*sql.DB, error) {
 
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to load AWS config: %w", err)
 	}
 
 	client := secretsmanager.NewFromConfig(cfg)
@@ -34,17 +34,26 @@ func Connect() (*sql.DB, error) {
 		SecretId: &secretName,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get secret: %w", err)
 	}
 
 	var creds DBSecrets
-	err = json.Unmarshal([]byte(*secretOutput.SecretString), &creds)
-	if err != nil {
-		return nil, err
+	if err := json.Unmarshal([]byte(*secretOutput.SecretString), &creds); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal secret: %w", err)
 	}
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true",
 		creds.Username, creds.Password, creds.Host, creds.Port, creds.Database)
 
-	return sql.Open("mysql", dsn)
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open DB: %w", err)
+	}
+
+	// Test the connection
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping DB: %w", err)
+	}
+
+	return db, nil
 }

@@ -59,16 +59,6 @@ func (h *NoteHandler) CreateNote(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "Note created", "id": id})
 }
 
-// DELETE /notes/:id
-func (h *NoteHandler) DeleteNote(c *gin.Context) {
-	id := c.Param("id")
-	if _, err := h.DB.Exec("DELETE FROM notes WHERE id = ?", id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete note"})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"message": "Note deleted"})
-}
-
 // PUT /notes/:id
 func (h *NoteHandler) UpdateNote(c *gin.Context) {
 	id := c.Param("id")
@@ -81,9 +71,24 @@ func (h *NoteHandler) UpdateNote(c *gin.Context) {
 		return
 	}
 
-	if _, err := h.DB.Exec("UPDATE notes SET content = ? WHERE id = ?", input.Content, id); err != nil {
+	_, err := h.DB.Exec("UPDATE notes SET content = ? WHERE id = ?", input.Content, id)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update note"})
 		return
 	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Note updated"})
+}
+
+// DELETE /notes/:id
+func (h *NoteHandler) DeleteNote(c *gin.Context) {
+	id := c.Param("id")
+
+	_, err := h.DB.Exec("DELETE FROM notes WHERE id = ?", id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete note"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Note deleted"})
 }

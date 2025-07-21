@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"log"
 )
 
 func Migrate(db *sql.DB) {
@@ -13,5 +14,10 @@ func Migrate(db *sql.DB) {
 		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 	);`
 
-	db.Exec(query)
+	_, err := db.Exec(query)
+	if err != nil {
+		log.Fatalf("Migration failed: %v", err)
+	}
+
+	log.Println("Migration completed successfully.")
 }
