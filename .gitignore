@@ -1,15 +1,21 @@
 # Go
-bin/
-*.log
 *.exe
 *.out
 *.test
 vendor/
+bin/
+*.log
+
+# Dependency directories
+node_modules/
+
+# Vue
+quick-notes-frontend/node_modules/
+quick-notes-frontend/dist/
+
+# Environment
 .env
+.env.*
 
-# Editor
-.vscode/
-.idea/
-
-# OS
+# System
 .DS_Store
