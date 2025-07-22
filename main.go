@@ -11,8 +11,8 @@ import (
 
 func main() {
 	// Load environment variables from .env if present
-	_ = os.Setenv("AWS_REGION", "your-region")         // Optional: put in .env
-	_ = os.Setenv("AWS_SECRET_NAME", "your-secret-id") // Optional: put in .env
+	//_ = os.Setenv("AWS_REGION", "your-region")         // Optional: put in .env
+	//_ = os.Setenv("AWS_SECRET_NAME", "your-secret-id") // Optional: put in .env
 
 	database, err := db.Connect()
 	if err != nil {

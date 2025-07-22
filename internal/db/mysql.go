@@ -16,7 +16,7 @@ type DBSecrets struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 	Host     string `json:"host"`
-	Port     string `json:"port"`
+	Port     int    `json:"port"`
 	Database string `json:"dbname"`
 }
 
@@ -42,7 +42,7 @@ func Connect() (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to unmarshal secret: %w", err)
 	}
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true",
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true",
 		creds.Username, creds.Password, creds.Host, creds.Port, creds.Database)
 
 	db, err := sql.Open("mysql", dsn)
@@ -50,7 +50,6 @@ func Connect() (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to open DB: %w", err)
 	}
 
-	// Test the connection
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping DB: %w", err)
 	}
