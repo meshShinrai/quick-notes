@@ -1,3 +1,5 @@
+//go:build !glibc
+
 package main
 
 import (
