@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"github.com/meshShinrai/quick-notes/internal/db"
 	"github.com/meshShinrai/quick-notes/internal/handlers"
 )
@@ -15,6 +16,10 @@ func main() {
 	// Load environment variables from .env if present
 	//_ = os.Setenv("AWS_REGION", "your-region")         // Optional: put in .env
 	//_ = os.Setenv("AWS_SECRET_NAME", "your-secret-id") // Optional: put in .env
+
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found. Using environment variables")
+	}
 
 	database, err := db.Connect()
 	if err != nil {
