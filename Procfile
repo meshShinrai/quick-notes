@@ -1,1 +1,1 @@
-web: ./quick-notes
+web: go run main.go
