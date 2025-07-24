@@ -3,24 +3,25 @@ package handlers
 import (
 	"database/sql"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/meshShinrai/quick-notes/internal/models"
 )
 
 type NoteHandler struct {
-	DB *sql.DB
+	db *sql.DB
 }
 
 func NewNoteHandler(db *sql.DB) *NoteHandler {
-	return &NoteHandler{DB: db}
+	return &NoteHandler{db: db}
 }
 
-// GET /notes
 func (h *NoteHandler) GetAllNotes(c *gin.Context) {
-	rows, err := h.DB.Query("SELECT id, content, created_at, updated_at FROM notes")
+	const query = `SELECT id, content, created_at, updated_at FROM notes ORDER BY created_at DESC`
+	rows, err := h.db.Query(query)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch notes"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
 		return
 	}
 	defer rows.Close()
@@ -29,7 +30,7 @@ func (h *NoteHandler) GetAllNotes(c *gin.Context) {
 	for rows.Next() {
 		var note models.Note
 		if err := rows.Scan(&note.ID, &note.Content, &note.CreatedAt, &note.UpdatedAt); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to scan note"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "data parsing error"})
 			return
 		}
 		notes = append(notes, note)
@@ -38,57 +39,78 @@ func (h *NoteHandler) GetAllNotes(c *gin.Context) {
 	c.JSON(http.StatusOK, notes)
 }
 
-// POST /notes
 func (h *NoteHandler) CreateNote(c *gin.Context) {
 	var input struct {
-		Content string `json:"content" binding:"required"`
+		Content string `json:"content" binding:"required,min=1,max=500"`
 	}
+
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Content is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input"})
 		return
 	}
 
-	query := "INSERT INTO notes (content) VALUES (?)"
-	result, err := h.DB.Exec(query, input.Content)
+	result, err := h.db.Exec("INSERT INTO notes (content) VALUES (?)", input.Content)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to insert note"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create note"})
 		return
 	}
 
 	id, _ := result.LastInsertId()
-	c.JSON(http.StatusCreated, gin.H{"message": "Note created", "id": id})
+	c.JSON(http.StatusCreated, gin.H{
+		"id":      id,
+		"content": input.Content,
+	})
 }
 
-// PUT /notes/:id
 func (h *NoteHandler) UpdateNote(c *gin.Context) {
-	id := c.Param("id")
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid note ID"})
+		return
+	}
 
 	var input struct {
-		Content string `json:"content" binding:"required"`
+		Content string `json:"content" binding:"required,min=1,max=500"`
 	}
+
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Content is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input"})
 		return
 	}
 
-	_, err := h.DB.Exec("UPDATE notes SET content = ? WHERE id = ?", input.Content, id)
+	res, err := h.db.Exec("UPDATE notes SET content = ? WHERE id = ?", input.Content, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update note"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Note updated"})
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "note not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "note updated"})
 }
 
-// DELETE /notes/:id
 func (h *NoteHandler) DeleteNote(c *gin.Context) {
-	id := c.Param("id")
-
-	_, err := h.DB.Exec("DELETE FROM notes WHERE id = ?", id)
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete note"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid note ID"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Note deleted"})
+	res, err := h.db.Exec("DELETE FROM notes WHERE id = ?", id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+		return
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "note not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "note deleted"})
 }
