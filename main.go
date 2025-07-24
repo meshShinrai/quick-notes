@@ -68,7 +68,7 @@ func main() {
 	// Start server
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080"
+		port = "5000"
 	}
 	log.Printf("Server starting on port %s", port)
 	log.Fatal(router.Run(":" + port))
