@@ -1,44 +1,66 @@
-<script setup>
-defineProps({
-  msg: {
-    type: String,
-    required: true,
-  },
-})
-</script>
-
 <template>
-  <div class="greetings">
-    <h1 class="green">{{ msg }}</h1>
-    <h3>
-      You’ve successfully created a project with
-      <a href="https://vite.dev/" target="_blank" rel="noopener">Vite</a> +
-      <a href="https://vuejs.org/" target="_blank" rel="noopener">Vue 3</a>.
-    </h3>
+  <div>
+    <h1>Notes App</h1>
+
+    <form @submit.prevent="addNote">
+      <input v-model="newNote.title" placeholder="Note Title" required />
+      <textarea v-model="newNote.content" placeholder="Note Content" required></textarea>
+      <button type="submit">Add Note</button>
+    </form>
+
+    <div v-if="notes.length">
+      <h2>All Notes</h2>
+      <ul>
+        <li v-for="note in notes" :key="note.id">
+          <strong>{{ note.title }}:</strong> {{ note.content }}
+        </li>
+      </ul>
+    </div>
   </div>
 </template>
 
-<style scoped>
-h1 {
-  font-weight: 500;
-  font-size: 2.6rem;
-  position: relative;
-  top: -10px;
-}
+<script setup>
+import { ref, onMounted } from 'vue'
+import axios from 'axios'
 
-h3 {
-  font-size: 1.2rem;
-}
+const notes = ref([])
+const newNote = ref({ title: '', content: '' })
 
-.greetings h1,
-.greetings h3 {
-  text-align: center;
-}
+const backendURL = import.meta.env.VITE_API_BASE_URL
 
-@media (min-width: 1024px) {
-  .greetings h1,
-  .greetings h3 {
-    text-align: left;
+const fetchNotes = async () => {
+  try {
+    const response = await axios.get(`${backendURL}/notes`)
+    notes.value = response.data
+  } catch (error) {
+    console.error('Error fetching notes:', error)
   }
+}
+
+const addNote = async () => {
+  try {
+    await axios.post(`${backendURL}/notes`, newNote.value)
+    newNote.value = { title: '', content: '' }
+    fetchNotes()
+  } catch (error) {
+    console.error('Error adding note:', error)
+  }
+}
+
+onMounted(fetchNotes)
+</script>
+
+<style scoped>
+form {
+  margin-bottom: 20px;
+}
+input,
+textarea {
+  display: block;
+  margin-bottom: 10px;
+  width: 100%;
+}
+button {
+  padding: 8px 12px;
 }
 </style>

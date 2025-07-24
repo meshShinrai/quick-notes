@@ -26,19 +26,32 @@ const notes = ref([])
 const newNote = ref('')
 
 const fetchNotes = async () => {
-  const res = await axios.get(`${API_BASE_URL}/notes`)
-  notes.value = res.data
+  try {
+    const res = await axios.get(`${API_BASE_URL}/notes`)
+    notes.value = res.data
+  } catch (error) {
+    console.error('Error fetching notes:', error)
+  }
 }
 
 const createNote = async () => {
-  await axios.post(`${API_BASE_URL}/notes`, { content: newNote.value })
-  newNote.value = ''
-  await fetchNotes()
+  if (!newNote.value.trim()) return
+  try {
+    await axios.post(`${API_BASE_URL}/notes`, { content: newNote.value })
+    newNote.value = ''
+    await fetchNotes()
+  } catch (error) {
+    console.error('Error creating note:', error)
+  }
 }
 
 const deleteNote = async (id) => {
-  await axios.delete(`${API_BASE_URL}/notes/${id}`)
-  await fetchNotes()
+  try {
+    await axios.delete(`${API_BASE_URL}/notes/${id}`)
+    await fetchNotes()
+  } catch (error) {
+    console.error('Error deleting note:', error)
+  }
 }
 
 onMounted(fetchNotes)
@@ -49,6 +62,7 @@ onMounted(fetchNotes)
   max-width: 600px;
   margin: auto;
   font-family: sans-serif;
+  padding: 20px;
 }
 form {
   display: flex;
@@ -61,6 +75,13 @@ input {
 }
 button {
   padding: 8px 12px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+button:hover {
+  background-color: #0056b3;
 }
 li {
   list-style: none;
