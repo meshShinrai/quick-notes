@@ -21,7 +21,8 @@ import axios from 'axios'
 const notes = ref([])
 const newNote = ref('')
 
-const API = 'http://localhost:5000/notes'
+// todo: Replace with your actual API base URL from env
+const API = import.meta.env.VITE_API_BASE_URL + '/notes'
 
 const fetchNotes = async () => {
   try {
